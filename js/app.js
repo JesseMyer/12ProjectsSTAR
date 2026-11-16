@@ -5,7 +5,9 @@
   const em = (s) => esc(s).replace(/\*([^*]+)\*/g, "<em>$1</em>");
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const dir = () => (root.dataset.theme === "light" ? "media_light/" : "media/");
-  const vtag = (name, alt, extra) => `<video muted loop playsinline preload="none" data-name="${name}" poster="${dir()}${name}.jpg" data-src="${dir()}${name}.mp4" ${alt ? `aria-label="${esc(alt)}"` : 'aria-hidden="true"'} ${extra || ""}></video>`;
+  const AR = { lanes: "1024/576", needs: "1820/500", flow: "1820/575", ring: "800/450", uplift: "1820/375", splash2: "1920/528", mega: "1456/150", sankey: "1820/700", 0: "1/1", 1: "1/1", 2: "1/1" };
+  const ar = (name) => { const a = AR[name.split("_").pop()]; return a ? `style="aspect-ratio:${a}"` : ""; };   // reserve the space so sections do not move as media loads
+  const vtag = (name, alt, extra) => `<video muted loop playsinline preload="none" ${ar(name)} data-name="${name}" poster="${dir()}${name}.jpg" data-src="${dir()}${name}.mp4" ${alt ? `aria-label="${esc(alt)}"` : 'aria-hidden="true"'} ${extra || ""}></video>`;
   const vid = (name, alt, cls) => `<div class="media ${cls || ""}">${vtag(name, alt)}<span class="tag mono">Live</span></div>`;
   const SW = [["S", "Situation", "The problem"], ["T", "Task", "The needs"], ["A", "Action", "The solution"], ["R", "Result", "The outcome"], ["(T)", "Tradeoffs", "Lessons learned"], ["(L)", "Leadership", "Principles"]];
   const order = D.lanes.flatMap((l) => l[2]); const byKey = (k) => D.decks.find((d) => d.key === k); const laneOf = (k) => D.lanes.findIndex((l) => l[2].includes(k));
@@ -118,7 +120,12 @@
     if (reduce || instant) gsap.set(flare, { x, y, opacity: .9 }); else gsap.to(flare, { x, y, opacity: .9, duration: .9, ease: "power3.out" }); };
   const setActive = (k) => { const nav = document.querySelector(".star"); if (!nav) return; const as = nav.querySelectorAll("a[data-k]");
     as.forEach((a) => a.classList.toggle("on", +a.dataset.k === k)); const a = as[Math.min(k, 5)], bar = nav.querySelector(".bar"), w = nav.querySelector(".wrap"), wr = w.getBoundingClientRect(), r = a.getBoundingClientRect();
-    gsap.to(bar, { left: r.left - wr.left + w.scrollLeft, width: r.width, duration: reduce ? 0 : .45, ease: "power3.out" }); moveFlare(a); };
+    gsap.to(bar, { left: r.left - wr.left + w.scrollLeft, width: r.width, duration: reduce ? 0 : .35, ease: "power3.out", overwrite: true }); moveFlare(a); };
+  // the active section is the last one whose top has passed just below the sticky bars; computed on scroll, so it cannot lag
+  let cur = -1, lock = 0;
+  const track = () => { const secs = document.querySelectorAll(".st"); if (!secs.length) return; const nav = document.querySelector(".star"), line = nav.getBoundingClientRect().bottom + Math.min(160, innerHeight * 0.25); let k = 0;
+    secs.forEach((s, i) => { if (s.getBoundingClientRect().top <= line) k = i; }); if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) k = secs.length - 1;
+    if (Date.now() < lock) return; if (k !== cur) { cur = k; setActive(k); } };
 
   const render = () => {
     const h = location.hash.replace(/^#\/?/, "").split("/"); if (spy) { spy.disconnect(); spy = null; } ScrollTrigger.getAll().forEach((t) => t.kill()); hideTip();
@@ -126,8 +133,7 @@
     sup.querySelectorAll("a").forEach((a) => { const on = d && a.dataset.key === d.key; a.classList.toggle("on", !!on); if (on) a.scrollIntoView({ block: "nearest", inline: "center" }); });
     if (d) { const same = app.dataset.key === d.key; if (!same) { app.innerHTML = program(d); app.dataset.key = d.key; document.title = d.name + " · 12 Programs × STAR"; root.style.setProperty("--pc", `var(--l${laneOf(d.key)})`); glossify(app); }
       const target = h[2] != null ? document.getElementById("s" + h[2]) : null; if (target) target.scrollIntoView(); else if (!same) scrollTo(0, 0);
-      spy = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) setActive(+e.target.id.slice(1)); }), { rootMargin: "-35% 0px -60% 0px" });
-      document.querySelectorAll(".st").forEach((s) => spy.observe(s)); requestAnimationFrame(() => setActive(h[2] != null ? +h[2] : 0));
+      if (h[2] != null) { cur = +h[2]; lock = Date.now() + 900; setActive(cur); setTimeout(track, 950); } else { cur = -1; requestAnimationFrame(track); }
     } else { app.innerHTML = home(); app.dataset.key = ""; document.title = "12 Programs × STAR · Jesse Myer"; glossify(app);
       if (h[0] === "about") setTimeout(() => document.getElementById("about").scrollIntoView(), 60); else scrollTo(0, 0);
       const hero = document.querySelector(".hero h1"); if (hero) { const r = hero.getBoundingClientRect(); gsap.set(flare, { x: innerWidth * .82, y: r.top + r.height + 30 }); gsap.fromTo(flare, { opacity: 0, scale: .4 }, { opacity: .85, scale: 1, duration: reduce ? 0 : 1.4, ease: "power2.out" }); } }
@@ -138,6 +144,7 @@
     app.focus({ preventScroll: true });
   };
   addEventListener("hashchange", render); addEventListener("resize", () => { const on = document.querySelector(".star a.on"); if (on) setActive(+on.dataset.k); });
+  addEventListener("scroll", track, { passive: true });
   addEventListener("scroll", () => { if (!document.querySelector(".star")) gsap.to(flare, { opacity: Math.max(0, .85 - scrollY / 500), duration: .2, overwrite: "auto" }); }, { passive: true });
   addEventListener("keydown", (e) => { if (e.target.closest("input,textarea") || e.metaKey || e.ctrlKey || e.altKey) return; const k = app.dataset.key; if (!k) return; const i = order.indexOf(k);
     if (e.key === "ArrowRight") location.hash = "#/p/" + order[(i + 1) % 12]; else if (e.key === "ArrowLeft") location.hash = "#/p/" + order[(i + 11) % 12]; else if (e.key === "i") location.hash = "#/"; });
