@@ -20,14 +20,13 @@
 
   const home = () => {
     let n = 0;
-    return `<div class="wrap">
-    <section class="hero">
+    return `<section class="hero"><div class="wrap">
       <p class="mono eyebrow">Jesse Myer · Enterprise and AI Architect</p>
       <h1>Twelve programs, <em>one</em> method</h1>
-      <p class="lede">Twelve business problems, each solved with architecture, each told the same way.</p>
-      ${vid("mega_splash2", "One marker travels through five stations, S, T, A, R and T for tradeoffs, then twelve deck tiles fill in")}
-      <p class="emps">Nationwide. UnitedHealth. Travelers. Waste Management. Aetna. Lincoln Financial.</p>
-    </section>
+      <p class="lede">Twelve business problems, each solved with architecture, each told the same way.</p></div>
+      <div class="splash">${vid("mega_splash2", "One marker travels through five stations, S, T, A, R and T for tradeoffs, then twelve deck tiles fill in", "wide")}</div>
+      <div class="wrap"><p class="emps">Nationwide. UnitedHealth. Travelers. Waste Management. Aetna. Lincoln Financial.</p></div>
+    </section><div class="wrap">
     <section id="index">
       <h2 class="sec">Pick a <em>program</em></h2>
       <p class="secsub">Three lanes, twelve programs. Each one stands alone: situation, task, action, result, then tradeoffs.</p>
@@ -52,6 +51,7 @@
         <img class="qr" src="img/qr_bio.png" alt="QR code for bio.jessemyer.com" loading="lazy">
         <a class="l" href="https://github.com/JesseMyer/miskatonic" rel="noopener"><small>Miskatonic: a governed AI platform for EA</small>github.com/JesseMyer/miskatonic</a>
         <a class="l" href="https://myersmiles.com" rel="noopener"><small>MyersMiles: racing, photography, travel</small>myersmiles.com</a>
+        <a class="l" href="https://github.com/JesseMyer/12ProjectsSTAR" rel="noopener"><small>This site, source</small>github.com/JesseMyer/12ProjectsSTAR</a>
       </div>
       <div class="made rv" id="made"><p class="mono eyebrow">Colophon</p><h2 class="sec">How this <em>deck</em> was made</h2><p class="secsub"><strong>I directed, reviewed and corrected.</strong> Claude wrote the code that drew every slide, every animation and this site, from the record I already keep.</p>${vid("made_sankey", "Sankey diagram: the CV and resume suite, session handoffs, bio.jessemyer.com, the Amazon brief, the Leadership Principles, public benchmarks, the Miskatonic visual language and a reference board flow into a story spec and a design system, then a deck engine, animation code and an honesty pass, and out as twelve program decks, a mega deck, a website and PDF backups, with a review loop back from Jesse")}</div>
       <div class="creds rv"><span>TOGAF 9 Master Architect</span><span>SEI CPAA</span><span>ITIL v3</span><span>AWS Cloud Practitioner</span><span>SAFe</span><span>Remote-native since 2013</span></div>
@@ -62,10 +62,10 @@
   const program = (d) => {
     const i = order.indexOf(d.key), prev = byKey(order[(i + 11) % 12]), next = byKey(order[(i + 1) % 12]);
     return `<nav class="star" aria-label="Sections"><div class="wrap">${SW.map((s, k) => `<a href="#/p/${d.key}/${k}" data-k="${k}"><b>${s[0]}</b><span>${s[1]}<small>${s[2]}</small></span></a>`).join("")}<a class="idx" href="#/"><span>◇ Index</span></a><i class="bar"></i></div></nav>
+    <section class="cover"><video muted loop playsinline preload="none" poster="media/${d.key}_cover.jpg" data-src="media/${d.key}_cover.mp4" aria-label="${esc(d.cover.alt || "")}"></video><div class="scrim"></div>
+      <div class="ct"><div><p class="mono eyebrow">${esc(d.where)}</p><h1>${em(d.coverTitle)}</h1>
+      <p><span class="mono ow">The old way</span>${esc(d.cover.old)}</p><p><span class="mono nw">The new way</span>${esc(d.cover.neu)}</p><p class="payoff">${esc(d.cover.payoff)}</p><div class="chips"><span class="chip">${esc(d.where.split(" · ")[0])}</span>${d.tech.map((t) => `<span class="chip tech">${esc(t)}</span>`).join("")}</div></div></div></section>
     <div class="wrap">
-    <section class="cover"><div><p class="mono eyebrow">${esc(d.where)}</p><h1>${em(d.coverTitle)}</h1>
-      <p><span class="mono ow">The old way</span>${esc(d.cover.old)}</p><p><span class="mono nw">The new way</span>${esc(d.cover.neu)}</p><p class="payoff">${esc(d.cover.payoff)}</p><div class="chips"><span class="chip">${esc(d.where.split(" · ")[0])}</span>${d.tech.map((t) => `<span class="chip tech">${esc(t)}</span>`).join("")}</div></div>
-      ${vid(d.key + "_cover", d.cover.alt)}</section>
     <section class="st" id="s0">${head(0, d)}<p class="sub">${esc(d.p.sub)}</p><div class="two"><div class="rv"><div class="box"><h4>OBJECTIVE</h4><p>${esc(d.p.objective)}</p></div>${d.p.stats.map((s) => `<div class="stat"><b>${esc(s[0])}</b><span>${esc(s[1])}</span></div>`).join("")}</div><div class="rv">${vid(d.key + "_lanes", d.p.alt)}</div></div></section>
     <section class="st" id="s1">${head(1, d)}<p class="sub">${esc(d.n.sub)}</p><div class="rv">${vid(d.key + "_needs", d.n.alt)}</div><div class="four">${d.n.rows.map((r, k) => `<div class="rv"><b>${esc(d.n.kp[k][0])}</b><span class="k">${esc(d.n.kp[k][1])}</span><h5>${esc(r[0])}</h5><p>${esc(r[1])}</p></div>`).join("")}</div></section>
     <section class="st" id="s2">${head(2, d)}<p class="sub">${esc(d.s.sub)}</p><div class="rv">${vid(d.key + "_flow", d.s.alt)}</div></section>
