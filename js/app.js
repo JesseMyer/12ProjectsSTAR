@@ -47,16 +47,16 @@
   const plainCV = (t) => t.kind === "From the CV and resume" && !t.tex;                       // a recorded figure with no math needs no card
   const kpi = (id, s) => { if (plainCV(s[2])) return ""; KT[id] = s[2]; return `data-kpi="${id}" tabindex="0"`; };
   const stat = (id, s) => `<div class="stat" ${kpi(id, s)}><b>${esc(s[0])}</b><span>${esc(s[1])}</span>${plainCV(s[2]) ? "" : `<i class="src">${esc(s[2].kind === "From the CV and resume" ? "Math" : s[2].kind)}</i>`}</div>`;
-  const co = (d, k) => `<aside class="callout" data-k="${k}"><img src="img/headshot.png" alt="" width="34" height="34"><div class="bub"><span class="mono">Jesse, on ${SW[k][1].toLowerCase()}</span><p>${esc(d.co[k])}</p></div></aside>`;
+  const co = (d, k) => `<aside class="callout" data-k="${k}"><img src="img/headshot.png" alt="" width="34" height="34"><div class="bub"><span class="mono">Jesse, on ${SW[k][1].toLowerCase()}</span><p>${esc(d.co[k])}</p>${k === 3 && d.rec ? `<blockquote>“${esc(d.rec[0])}”<cite>${esc(d.rec[1])}, in a LinkedIn recommendation</cite></blockquote>` : ""}</div></aside>`;
 
   // theme: real light media, not a filter
   const tbtn = document.getElementById("theme");
-  const setTheme = (t) => { root.dataset.theme = t; tbtn.textContent = t === "dark" ? "Light" : "Dark"; try { localStorage.setItem("jm-theme", t); } catch (e) {}
+  const setTheme = (t) => { root.dataset.theme = t; tbtn.setAttribute("aria-checked", t === "light"); tbtn.title = t === "dark" ? "Switch to light" : "Switch to dark"; try { localStorage.setItem("jm-theme", t); } catch (e) {}
     document.querySelectorAll("video[data-name]").forEach((v) => { const n = v.dataset.name; v.poster = dir() + n + ".jpg"; v.dataset.src = dir() + n + ".mp4"; if (v.getAttribute("src")) { v.src = v.dataset.src; if (!reduce) v.play().catch(() => {}); } }); };
   let saved = null; try { saved = localStorage.getItem("jm-theme"); } catch (e) {}
   setTheme(saved || "dark"); tbtn.addEventListener("click", () => setTheme(root.dataset.theme === "dark" ? "light" : "dark"));
 
-  const cbtn = document.getElementById("callouts"); const setCo = (on) => { root.dataset.callouts = on ? "on" : "off"; cbtn.textContent = "Callouts: " + (on ? "on" : "off"); cbtn.setAttribute("aria-pressed", on); try { localStorage.setItem("jm-callouts", on ? "on" : "off"); } catch (e) {} };
+  const cbtn = document.getElementById("callouts"); const setCo = (on) => { root.dataset.callouts = on ? "on" : "off"; cbtn.setAttribute("aria-checked", on); cbtn.title = on ? "Hide the speaker callouts" : "Show the speaker callouts"; try { localStorage.setItem("jm-callouts", on ? "on" : "off"); } catch (e) {} };
   let sco = null; try { sco = localStorage.getItem("jm-callouts"); } catch (e) {} setCo(sco !== "off"); cbtn.addEventListener("click", () => setCo(root.dataset.callouts !== "on"));
   // super-navigation: all twelve programs, colored by lane
   const sup = document.getElementById("super"); let n0 = 0;
@@ -65,12 +65,34 @@
   const vio = new IntersectionObserver((es) => es.forEach((e) => { const v = e.target;
     if (e.isIntersecting) { if (!v.getAttribute("src")) v.src = v.dataset.src; if (!reduce) v.play().catch(() => {}); } else if (!v.paused) v.pause(); }), { rootMargin: "200px" });
 
+  const FL = [["S", "Situation", "The business problem", "where and when, and why it was a business problem."], ["T", "Task", "What it demanded", "what the business needed, and what that demanded of the architecture."], ["A", "Action", "The architecture", "the solution, in one picture."],
+    ["R", "Result", "The numbers", "what came of it, and the principle behind it."], ["(T)", "Tradeoffs", "Cost and lessons", "what each decision cost, read ATAM-style, and the lessons learned."], ["(L)", "Leadership", "The principles", "which of Amazon's sixteen Leadership Principles the program evidences, and which it does not."]];
+  let flowTl = null;
+  const flowInit = () => { const el = document.getElementById("flow"); if (flowTl) { flowTl.kill(); flowTl = null; } if (!el) return;
+    const dot = el.querySelector(".fl-dot"), fill = el.querySelector(".fl-fill"), sts = [...el.querySelectorAll(".fl-st")], tiles = [...el.querySelectorAll(".fl-grid a")], desc = el.querySelector(".fl-desc"), st = { p: 0 }; let pinned = -1;
+    const say = (i) => { desc.innerHTML = `<b>${FL[i][0]} · ${FL[i][1]}</b> ${FL[i][3]}`; };
+    const put = (p, cur) => { dot.style.left = p * 100 + "%"; fill.style.width = p * 100 + "%"; sts.forEach((s, i) => { s.classList.toggle("done", i / 5 <= p + 0.001); s.classList.toggle("on", i === cur); }); };
+    const fillTiles = (n) => tiles.forEach((t, i) => t.classList.toggle("lit", i < n));
+    if (reduce) { put(1, -1); fillTiles(12); desc.textContent = "Every program is told in the same six steps."; }
+    else { flowTl = gsap.timeline({ repeat: -1, repeatDelay: 0.4 }); flowTl.call(() => { fillTiles(0); put(0, 0); say(0); });
+      FL.forEach((f, i) => { if (i) flowTl.to(st, { p: i / 5, duration: 1.0, ease: "power2.inOut", onUpdate: () => put(st.p, -1) }); flowTl.call(() => { put(i / 5, i); say(i); }).to({}, { duration: 1.5 }); });
+      const tc = { n: 0 }; flowTl.call(() => { desc.innerHTML = "<b>12 decks</b> one method. Pick any tile to open a program."; put(1, -1); }).to(tc, { n: 12, duration: 1.4, ease: "none", onUpdate: () => fillTiles(Math.round(tc.n)) }).to({}, { duration: 2.2 }).set(st, { p: 0 }).set(tc, { n: 0 }); }
+    const hold = (i) => { if (flowTl) flowTl.pause(); put(i / 5, i); say(i); }, go = () => { if (pinned < 0 && flowTl) flowTl.play(); };
+    sts.forEach((s, i) => { s.addEventListener("mouseenter", () => hold(i)); s.addEventListener("focus", () => hold(i)); s.addEventListener("mouseleave", go); s.addEventListener("blur", go);
+      s.addEventListener("click", () => { pinned = pinned === i ? -1 : i; sts.forEach((x, k) => x.classList.toggle("pin", k === pinned)); if (pinned < 0) go(); else hold(i); }); });
+    tiles.forEach((t) => { const show = () => { if (flowTl) flowTl.pause(); fillTiles(12); desc.innerHTML = `<b>${esc(t.dataset.name)}</b> ${esc(byKey(t.getAttribute("href").split("/").pop()).one)}`; }; t.addEventListener("mouseenter", show); t.addEventListener("focus", show); t.addEventListener("mouseleave", go); t.addEventListener("blur", go); }); };
   const home = () => { let n = 0;
     return `<section class="hero"><div class="wrap">
       <p class="mono eyebrow">Jesse Myer · Enterprise and AI Architect</p>
       <h1>12 Programs <em>×</em> STAR</h1>
       <p class="lede">Twelve business problems, each solved with architecture, each told the same way.</p></div>
-      <div class="splash">${vid("mega_splash2", "One marker travels through five stations, S, T, A, R and T for tradeoffs, then twelve deck tiles fill in", "wide")}</div>
+      <div class="splash"><div class="flow" id="flow">
+        <div class="fl-in"><b>12 programs</b><span>20 years of work</span></div>
+        <div class="fl-track"><i class="fl-line"></i><i class="fl-fill"></i><i class="fl-dot"></i>${FL.map((f, i) => `<button class="fl-st" type="button" data-i="${i}" style="left:${i * 20}%" aria-label="${f[1]}: ${f[3]}"><span class="w">${f[1]}</span><b>${f[0]}</b><small>${f[2]}</small></button>`).join("")}</div>
+        <div class="fl-out"><span>12 decks</span><div class="fl-grid">${order.map((k) => `<a class="l${laneOf(k)}" href="#/p/${k}" data-name="${esc(byKey(k).name)}" aria-label="${esc(byKey(k).name)}"></a>`).join("")}</div><small>one method</small></div>
+        <p class="fl-desc" aria-live="polite"></p>
+        <div class="fl-tools">${["TOGAF 9", "SEI ATAM", "Leadership Principles", "SAFe", "SIPOC", "TCO", "AWS", "Azure", "Cloud Foundry", "Service Cloud", "Tableau", "Unity"].map((t) => `<span>${t}</span>`).join("")}<em>The methods and platforms behind the twelve stories. Hover a step, or pick a deck.</em></div>
+      </div></div>
       <div class="wrap"><p class="emps">Nationwide. UnitedHealth. Travelers. Waste Management. Aetna. Lincoln Financial.</p></div>
     </section><div class="wrap">
     <section id="index">
@@ -145,6 +167,7 @@
     } else { app.innerHTML = home(); app.dataset.key = ""; document.title = "12 Programs × STAR · Jesse Myer"; glossify(app);
       if (h[0] === "about" || h[0] === "index") setTimeout(() => document.getElementById(h[0]).scrollIntoView(), 60); else scrollTo(0, 0);
       const hero = document.querySelector(".hero h1"); if (hero) { const r = hero.getBoundingClientRect(); gsap.set(flare, { x: innerWidth * .82, y: r.top + r.height + 30 }); gsap.fromTo(flare, { opacity: 0, scale: .4 }, { opacity: .85, scale: 1, duration: reduce ? 0 : 1.4, ease: "power2.out" }); } }
+    flowInit();
     document.querySelectorAll('a[href^="http"]').forEach((a) => { a.target = "_blank"; a.rel = "noopener"; });
     document.querySelectorAll("video[data-src]").forEach((v) => vio.observe(v));
     if (!reduce) { gsap.utils.toArray(".rv").forEach((el) => gsap.to(el, { opacity: 1, y: 0, duration: .7, ease: "power2.out", scrollTrigger: { trigger: el, start: "top 88%", once: true } }));
