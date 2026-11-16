@@ -158,3 +158,5 @@ a.chip{text-decoration:none}a.chip:hover{background:color-mix(in srgb,var(--gold
 .tipbox.on{opacity:1;visibility:visible;transform:none}.tipbox .th{color:var(--gold);margin-bottom:4px}.tipbox p{margin:0;color:var(--ink2)}.tipbox .math{margin-top:8px;overflow-x:auto;color:var(--ink)}.tipbox .katex-display{margin:.3em 0}.tipbox .katex{font-size:1.02em}
 @media (max-width:980px){.super{display:flex;overflow-x:auto;margin:0 -16px}.super a{flex:none}}
 @media (prefers-reduced-motion:reduce){.tipbox{transition:none}}
+
+.star .wrap{position:relative}
