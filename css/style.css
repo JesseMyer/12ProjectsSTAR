@@ -160,3 +160,22 @@ a.chip{text-decoration:none}a.chip:hover{background:color-mix(in srgb,var(--gold
 @media (prefers-reduced-motion:reduce){.tipbox{transition:none}}
 
 .star .wrap{position:relative}
+
+/* active tab: drawn by the tab itself, so it cannot drift */
+.star .bar{display:none}
+.star a[data-k]::after{content:"";position:absolute;left:10px;right:10px;bottom:0;height:3px;border-radius:3px;background:var(--pc,var(--teal));transform:scaleX(0);transition:transform .25s ease}
+.star a[data-k].on::after{transform:scaleX(1)}
+/* hover cards can be entered, so their links are clickable */
+.tipbox.on{pointer-events:auto}.tipbox a.more{display:inline-block;margin-top:8px;font:500 .68rem var(--mono);letter-spacing:.06em;color:var(--teal);text-decoration:none;border-bottom:1px solid var(--teal)}
+.creds span.tip{border-bottom:1px solid var(--line);cursor:help}.creds span.tip:first-child{border-color:var(--gold)}.creds span.tip:hover,.creds span.tip:focus{border-color:var(--teal);color:var(--ink)}
+/* callouts: a speaker's aside beside each section */
+.callout{display:none}
+:root[data-callouts=on] .callout{display:flex;gap:10px;align-items:flex-start;margin:0 0 22px;opacity:.55;transition:opacity .25s}
+:root[data-callouts=on] .callout.on{opacity:1}
+.callout img{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--teal);flex:none;object-fit:cover}
+.callout .bub{position:relative;background:var(--panel);border:1.5px solid var(--teal);border-radius:4px 14px 14px 14px;padding:10px 14px 12px;box-shadow:var(--shadow)}
+.callout .bub::before{content:"";position:absolute;left:-8px;top:10px;width:12px;height:12px;background:var(--panel);border-left:1.5px solid var(--teal);border-bottom:1.5px solid var(--teal);transform:rotate(45deg)}
+.callout .bub .mono{color:var(--teal);font-size:.58rem}.callout .bub p{margin:4px 0 0;font-size:.9rem;line-height:1.45;color:var(--ink)}
+@media (min-width:1180px){:root[data-callouts=on] .st{display:grid;grid-template-columns:minmax(0,1fr) 290px;column-gap:32px;align-items:start}
+  :root[data-callouts=on] .st>*{grid-column:1}:root[data-callouts=on] .st>.callout{grid-column:2;grid-row:1/span 12;position:sticky;top:calc(var(--hh,104px) + 76px);margin:8px 0 0}}
+#callouts[aria-pressed=false]{color:var(--mute)}

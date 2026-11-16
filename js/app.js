@@ -22,26 +22,32 @@
     ["CRM", "Customer relationship management."], ["CPQ", "Configure, price, quote."], ["CLM", "Contract lifecycle management."], ["FSM", "Field service management."], ["ERP", "Enterprise resource planning: finance and operations."],
     ["point cloud", "A 3D scan stored as millions of measured points."], ["propensity", "A propensity model scores how likely a customer is to act."], ["TMEGS", "The AWS industry group for telecom, media, entertainment, games and sports."], ["C-suite", "The executive team."]];
   const GRE = new RegExp("\\b(" + GLOSS.map((g) => g[0]).join("|") + ")\\b", "i");
-  const defOf = (w) => (GLOSS.find((g) => new RegExp("^(?:" + g[0] + ")$", "i").test(w)) || [])[1];
+  const MORE = { "ATAM": ["sei.cmu.edu", "https://www.sei.cmu.edu"], "TOGAF(?: 9)?": ["opengroup.org/togaf", "https://www.opengroup.org/togaf"], "SAFe": ["scaledagileframework.com", "https://scaledagileframework.com"], "prescreen(?:ed)?": ["FTC on prescreened offers", "https://consumer.ftc.gov/articles/prescreened-credit-insurance-offers"], "opt-outs?": ["FTC on prescreened offers", "https://consumer.ftc.gov/articles/prescreened-credit-insurance-offers"], "TMEGS": ["Amazon Leadership Principles", "https://www.amazon.jobs/content/en/our-workplace/leadership-principles"] };
+  const entry = (w) => GLOSS.find((g) => new RegExp("^(?:" + g[0] + ")$", "i").test(w)); const defOf = (w) => (entry(w) || [])[1];
+  const CRED = { "TOGAF 9 Master Architect": ["The Open Group's enterprise architecture framework; Master is its highest practitioner level.", "opengroup.org/togaf", "https://www.opengroup.org/togaf"], "SEI CPAA": ["Certified Professional in Software Architecture, from the Software Engineering Institute at Carnegie Mellon, home of ATAM.", "sei.cmu.edu", "https://www.sei.cmu.edu"],
+    "ITIL v3": ["The IT Infrastructure Library: the common practice set for running IT services.", "", ""], "AWS Cloud Practitioner": ["AWS's foundational certification: cloud concepts, services, security and billing.", "aws.amazon.com/certification", "https://aws.amazon.com/certification/certified-cloud-practitioner/"],
+    "SAFe": ["Scaled Agile Framework: how many teams plan and deliver on one cadence.", "scaledagileframework.com", "https://scaledagileframework.com"], "Remote-native since 2013": ["Working with distributed teams and clients, by default, for more than a decade.", "", ""] };
   const glossify = (scope) => { scope.querySelectorAll(".st, .cover, .why, .hero").forEach((sec) => { const seen = new Set();
     const tw = document.createTreeWalker(sec, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest("p,li,h5") && !n.parentElement.closest(".tip,.mono,a,.chip,[data-kpi]") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT) });
     const nodes = []; while (tw.nextNode()) nodes.push(tw.currentNode);
     nodes.forEach((n) => { const m = GRE.exec(n.nodeValue); if (!m) return; const def = defOf(m[1]); if (!def || seen.has(def)) return; seen.add(def);
-      const r = document.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[1].length); const sp = document.createElement("span"); sp.className = "tip"; sp.tabIndex = 0; sp.dataset.tip = def; sp.dataset.term = m[1]; r.surroundContents(sp); }); }); };
+      const r = document.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[1].length); const sp = document.createElement("span"); sp.className = "tip"; sp.tabIndex = 0; sp.dataset.tip = def; sp.dataset.term = m[1]; const mo = MORE[entry(m[1])[0]]; if (mo) { sp.dataset.more = mo[0]; sp.dataset.url = mo[1]; } r.surroundContents(sp); }); }); };
 
   // one hover card for definitions and for KPI sources and math
   const card = document.createElement("div"); card.className = "tipbox"; card.setAttribute("role", "tooltip"); document.body.appendChild(card); let tipEl = null; const KT = {};
   const tex = (t) => { try { return window.katex ? katex.renderToString(t, { throwOnError: false, displayMode: true }) : `<code>${esc(t)}</code>`; } catch (e) { return `<code>${esc(t)}</code>`; } };
   const showTip = (el) => { tipEl = el; const k = el.dataset.kpi && KT[el.dataset.kpi];
-    card.innerHTML = k ? `<div class="th mono">${esc(k.kind)}</div>${k.note ? `<p>${esc(k.note)}</p>` : ""}${k.tex ? `<div class="math">${tex(k.tex)}</div>` : ""}` : `<div class="th mono">${esc(el.dataset.term || "Definition")}</div><p>${esc(el.dataset.tip)}</p>`;
+    card.innerHTML = k ? `<div class="th mono">${esc(k.kind)}</div>${k.note ? `<p>${esc(k.note)}</p>` : ""}${k.tex ? `<div class="math">${tex(k.tex)}</div>` : ""}` : `<div class="th mono">${esc(el.dataset.term || "Definition")}</div><p>${esc(el.dataset.tip)}</p>${el.dataset.url ? `<a class="more" href="${esc(el.dataset.url)}" target="_blank" rel="noopener">${esc(el.dataset.more)} ↗</a>` : ""}`;
     card.classList.add("on"); const r = el.getBoundingClientRect(), w = card.offsetWidth, h = card.offsetHeight; let x = Math.max(10, Math.min(innerWidth - w - 10, r.left + r.width / 2 - w / 2)), y = r.top - h - 10; if (y < 70) y = r.bottom + 10; card.style.left = x + "px"; card.style.top = y + "px"; };
-  const hideTip = () => { tipEl = null; card.classList.remove("on"); };
-  document.addEventListener("mouseover", (e) => { const t = e.target.closest("[data-tip],[data-kpi]"); if (t) showTip(t); else if (tipEl && !e.target.closest(".tipbox")) hideTip(); });
-  document.addEventListener("focusin", (e) => { const t = e.target.closest("[data-tip],[data-kpi]"); if (t) showTip(t); }); document.addEventListener("focusout", hideTip);
-  document.addEventListener("click", (e) => { const t = e.target.closest("[data-tip],[data-kpi]"); if (t) { if (tipEl === t && card.classList.contains("on") && e.pointerType !== "mouse") hideTip(); else showTip(t); } else hideTip(); });
+  let hideT = 0; const hideTip = () => { clearTimeout(hideT); tipEl = null; card.classList.remove("on"); };
+  document.addEventListener("mouseover", (e) => { const t = e.target.closest("[data-tip],[data-kpi]"); if (t) { clearTimeout(hideT); showTip(t); } else if (e.target.closest(".tipbox")) clearTimeout(hideT); else if (tipEl) { clearTimeout(hideT); hideT = setTimeout(hideTip, 260); } });
+  document.addEventListener("focusin", (e) => { const t = e.target.closest("[data-tip],[data-kpi]"); if (t) showTip(t); }); document.addEventListener("focusout", (e) => { if (!(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(".tipbox"))) { clearTimeout(hideT); hideT = setTimeout(hideTip, 200); } });
+  document.addEventListener("click", (e) => { const t = e.target.closest("[data-tip],[data-kpi]"); if (t) { if (tipEl === t && card.classList.contains("on") && e.pointerType !== "mouse") hideTip(); else showTip(t); } else if (!e.target.closest(".tipbox")) hideTip(); });
   addEventListener("scroll", hideTip, { passive: true }); addEventListener("keydown", (e) => { if (e.key === "Escape") hideTip(); });
-  const kpi = (id, s) => { KT[id] = s[2]; return `data-kpi="${id}" tabindex="0"`; };
-  const stat = (id, s) => `<div class="stat" ${kpi(id, s)}><b>${esc(s[0])}</b><span>${esc(s[1])}</span><i class="src">${esc(s[2].kind)}</i></div>`;
+  const plainCV = (t) => t.kind === "From the CV and resume" && !t.tex;                       // a recorded figure with no math needs no card
+  const kpi = (id, s) => { if (plainCV(s[2])) return ""; KT[id] = s[2]; return `data-kpi="${id}" tabindex="0"`; };
+  const stat = (id, s) => `<div class="stat" ${kpi(id, s)}><b>${esc(s[0])}</b><span>${esc(s[1])}</span>${plainCV(s[2]) ? "" : `<i class="src">${esc(s[2].kind === "From the CV and resume" ? "Math" : s[2].kind)}</i>`}</div>`;
+  const co = (d, k) => `<aside class="callout" data-k="${k}"><img src="img/headshot.png" alt="" width="34" height="34"><div class="bub"><span class="mono">Jesse, on ${SW[k][1].toLowerCase()}</span><p>${esc(d.co[k])}</p></div></aside>`;
 
   // theme: real light media, not a filter
   const tbtn = document.getElementById("theme");
@@ -50,6 +56,8 @@
   let saved = null; try { saved = localStorage.getItem("jm-theme"); } catch (e) {}
   setTheme(saved || "dark"); tbtn.addEventListener("click", () => setTheme(root.dataset.theme === "dark" ? "light" : "dark"));
 
+  const cbtn = document.getElementById("callouts"); const setCo = (on) => { root.dataset.callouts = on ? "on" : "off"; cbtn.textContent = "Callouts: " + (on ? "on" : "off"); cbtn.setAttribute("aria-pressed", on); try { localStorage.setItem("jm-callouts", on ? "on" : "off"); } catch (e) {} };
+  let sco = null; try { sco = localStorage.getItem("jm-callouts"); } catch (e) {} setCo(sco !== "off"); cbtn.addEventListener("click", () => setCo(root.dataset.callouts !== "on"));
   // super-navigation: all twelve programs, colored by lane
   const sup = document.getElementById("super"); let n0 = 0;
   sup.innerHTML = D.lanes.map((L, li) => L[2].map((k) => { const d = byKey(k); n0++; return `<a class="l${li}" href="#/p/${k}" data-key="${k}" title="${esc(d.name)}: ${esc(d.one)}"><b>${String(n0).padStart(2, "0")}</b><span>${esc(d.name.replace(/^The /, ""))}</span></a>`; }).join("")).join("");
@@ -92,35 +100,35 @@
         <a class="l" href="https://github.com/JesseMyer/12ProjectsSTAR"><small>This site, source</small>github.com/JesseMyer/12ProjectsSTAR</a>
       </div>
       <div class="made rv" id="made"><p class="mono eyebrow">Colophon</p><h2 class="sec">How this <em>deck</em> was made</h2><p class="secsub"><strong>I directed, reviewed and corrected.</strong> Claude wrote the code that drew every slide, every animation and this site, from the record I already keep.</p>${vid("made_sankey", "Sankey diagram: the CV and resume suite, session handoffs, bio.jessemyer.com, the Amazon brief, the Leadership Principles, public benchmarks, the Miskatonic visual language and a reference board flow into a story spec and a design system, then a deck engine, animation code and an honesty pass, and out as twelve program decks, a mega deck, a website and PDF backups, with a review loop back from Jesse")}</div>
-      <div class="creds rv"><span>TOGAF 9 Master Architect</span><span>SEI CPAA</span><span>ITIL v3</span><span>AWS Cloud Practitioner</span><span>SAFe</span><span>Remote-native since 2013</span></div>
+      <div class="creds rv">${Object.entries(CRED).map(([n, c]) => `<span class="tip" tabindex="0" data-term="${esc(n)}" data-tip="${esc(c[0])}" ${c[2] ? `data-more="${esc(c[1])}" data-url="${esc(c[2])}"` : ""}>${esc(n)}</span>`).join("")}</div>
     </section></div>`;
   };
 
   const head = (i, d) => `<div class="sthead"><p class="mono eyebrow">${SW[i][0]} · ${SW[i][1]} · ${SW[i][2]}</p><div class="chips">${(d.lps[i] || []).map((c) => `<a class="chip" href="#/p/${d.key}/5" title="See the evidence under (L)">${esc(c)}</a>`).join("")}</div></div><h2>${em(d.titles[i])}</h2>`;
   const program = (d) => { const i = order.indexOf(d.key), prev = byKey(order[(i + 11) % 12]), next = byKey(order[(i + 1) % 12]), K = d.key;
-    return `<nav class="star" aria-label="Sections"><div class="wrap">${SW.map((s, k) => `<a href="#/p/${K}/${k}" data-k="${k}"><b>${s[0]}</b><span>${s[1]}<small>${s[2]}</small></span></a>`).join("")}<a class="idx" href="#/"><span>◇ Index</span></a><i class="bar"></i></div></nav>
+    return `<nav class="star" aria-label="Sections"><div class="wrap">${SW.map((s, k) => `<a href="#/p/${K}/${k}" data-k="${k}"><b>${s[0]}</b><span>${s[1]}<small>${s[2]}</small></span></a>`).join("")}</div></nav>
     <section class="cover">${vtag(K + "_cover", d.cover.alt)}<div class="scrim"></div>
       <div class="ct"><div><p class="mono eyebrow">${esc(d.where)}</p><h1>${em(d.coverTitle)}</h1>
       <p><span class="mono ow">The old way</span>${esc(d.cover.old)}</p><p><span class="mono nw">The new way</span>${esc(d.cover.neu)}</p><p class="payoff">${esc(d.cover.payoff)}</p><div class="chips"><span class="chip">${esc(d.where.split(" · ")[0])}</span>${d.tech.map((t) => `<span class="chip tech">${esc(t)}</span>`).join("")}</div></div></div></section>
     <div class="wrap">
-    <section class="st" id="s0">${head(0, d)}<p class="sub">${esc(d.p.sub)}</p><div class="two"><div class="rv"><div class="box"><h4>OBJECTIVE</h4><p>${esc(d.p.objective)}</p></div>${d.p.stats.map((s, k) => stat(K + "p" + k, s)).join("")}</div><div class="rv">${vid(K + "_lanes", d.p.alt)}</div></div></section>
-    <section class="st" id="s1">${head(1, d)}<p class="sub">${esc(d.n.sub)}</p><div class="rv">${vid(K + "_needs", d.n.alt)}</div><div class="four">${d.n.rows.map((r, k) => `<div class="rv"><b ${kpi(K + "n" + k, d.n.kp[k])}>${esc(d.n.kp[k][0])}</b><span class="k">${esc(d.n.kp[k][1])}</span><h5>${esc(r[0])}</h5><p>${esc(r[1])}</p></div>`).join("")}</div></section>
-    <section class="st" id="s2">${head(2, d)}<p class="sub">${esc(d.s.sub)}</p><div class="rv">${vid(K + "_flow", d.s.alt)}</div></section>
-    <section class="st" id="s3">${head(3, d)}<p class="sub">${esc(d.o.sub)}</p><div class="two"><div class="rv">${vid(K + "_ring", d.o.alt)}</div><div class="rv"><div class="box gold"><h4>${esc(d.o.resLabel)}</h4><div class="res">${d.o.results.map((s, k) => stat(K + "o" + k, s)).join("")}</div></div><div class="box" style="margin-top:14px"><h4>THE PRINCIPLE BEHIND IT</h4><p style="font-weight:400;font-style:italic">${esc(cap(d.pattern))}</p></div></div></div><p class="close rv">${esc(d.o.close)}</p></section>
-    <section class="st" id="s4">${head(4, d)}<p class="sub">An ATAM-style read: four quality attributes, the decision behind each, what it cost, and what I learned.</p><div class="rv">${vid(K + "_uplift", d.t.alt)}</div>
+    <section class="st" id="s0">${head(0, d)}<p class="sub">${esc(d.p.sub)}</p>${co(d, 0)}<div class="two"><div class="rv"><div class="box"><h4>OBJECTIVE</h4><p>${esc(d.p.objective)}</p></div>${d.p.stats.map((s, k) => stat(K + "p" + k, s)).join("")}</div><div class="rv">${vid(K + "_lanes", d.p.alt)}</div></div></section>
+    <section class="st" id="s1">${head(1, d)}<p class="sub">${esc(d.n.sub)}</p>${co(d, 1)}<div class="rv">${vid(K + "_needs", d.n.alt)}</div><div class="four">${d.n.rows.map((r, k) => `<div class="rv"><b ${kpi(K + "n" + k, d.n.kp[k])}>${esc(d.n.kp[k][0])}</b><span class="k">${esc(d.n.kp[k][1])}</span><h5>${esc(r[0])}</h5><p>${esc(r[1])}</p></div>`).join("")}</div></section>
+    <section class="st" id="s2">${head(2, d)}<p class="sub">${esc(d.s.sub)}</p>${co(d, 2)}<div class="rv">${vid(K + "_flow", d.s.alt)}</div></section>
+    <section class="st" id="s3">${head(3, d)}<p class="sub">${esc(d.o.sub)}</p>${co(d, 3)}<div class="two"><div class="rv">${vid(K + "_ring", d.o.alt)}</div><div class="rv"><div class="box gold"><h4>${esc(d.o.resLabel)}</h4><div class="res">${d.o.results.map((s, k) => stat(K + "o" + k, s)).join("")}</div></div><div class="box" style="margin-top:14px"><h4>THE PRINCIPLE BEHIND IT</h4><p style="font-weight:400;font-style:italic">${esc(cap(d.pattern))}</p></div></div></div><p class="close rv">${esc(d.o.close)}</p></section>
+    <section class="st" id="s4">${head(4, d)}<p class="sub">An ATAM-style read: four quality attributes, the decision behind each, what it cost, and what I learned.</p>${co(d, 4)}<div class="rv">${vid(K + "_uplift", d.t.alt)}</div>
       <div class="four">${d.t.at.map((r, k) => `<div class="qa rv" style="--qc:var(--q${k})"><h5><span class="num">${k + 1}</span>${esc(r[0])}</h5><p><span class="lbl sp tip" tabindex="0" data-term="Sensitivity point" data-tip="The one design property this quality attribute hinges on.">Sensitivity point</span>${esc(r[1])}</p><p><span class="lbl tp tip" tabindex="0" data-term="Tradeoff point" data-tip="Where improving this attribute costs another.">Tradeoff point</span>${esc(r[2])}</p></div>`).join("")}</div>
       <div class="box gold lessons rv"><h4>LESSONS LEARNED</h4><ul>${d.o.carry.map((c) => `<li>${esc(c)}.</li>`).join("")}</ul><p class="role"><span>FOR THIS ROLE</span>${esc(d.aws)}</p></div></section>
-    <section class="st" id="s5"><div class="sthead"><p class="mono eyebrow">(L) · Leadership · Principles, evidence map</p></div><h2>The <em>Principles</em></h2><p class="sub">${esc(d.name)} against Amazon's sixteen Leadership Principles. Tiles without evidence in this program say so.</p>
+    <section class="st" id="s5"><div class="sthead"><p class="mono eyebrow">(L) · Leadership · Principles, evidence map</p></div><h2>The <em>Principles</em></h2><p class="sub">${esc(d.name)} against Amazon's sixteen Leadership Principles. Tiles without evidence in this program say so.</p>${co(d, 5)}
       <div class="lpgrid">${D.lpn.map((n, k) => d.lp[k] ? `<div class="lp rv"><h5>${esc(n)}</h5><p>${esc(d.lp[k])}</p></div>` : `<div class="lp off rv"><h5>${esc(n)}</h5><p>Not shown in this project.</p></div>`).join("")}</div></section>
-    <div class="pager"><a class="btn" href="#/p/${prev.key}">‹ ${esc(prev.name)}</a><a class="btn" href="#/">◇ Index</a><a class="btn" href="#/p/${next.key}">${esc(next.name)} ›</a></div></div>`;
+    <div class="pager"><a class="btn" href="#/p/${prev.key}">‹ ${esc(prev.name)}</a><a class="btn" href="#/index">◇ Index</a><a class="btn" href="#/p/${next.key}">${esc(next.name)} ›</a></div></div>`;
   };
 
   let spy = null;
   const moveFlare = (el, instant) => { if (!el) return; const r = el.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.bottom;
     if (reduce || instant) gsap.set(flare, { x, y, opacity: .9 }); else gsap.to(flare, { x, y, opacity: .9, duration: .9, ease: "power3.out" }); };
   const setActive = (k) => { const nav = document.querySelector(".star"); if (!nav) return; const as = nav.querySelectorAll("a[data-k]");
-    as.forEach((a) => a.classList.toggle("on", +a.dataset.k === k)); const a = as[Math.min(k, 5)], bar = nav.querySelector(".bar"), w = nav.querySelector(".wrap"), wr = w.getBoundingClientRect(), r = a.getBoundingClientRect();
-    gsap.to(bar, { left: r.left - wr.left + w.scrollLeft, width: r.width, duration: reduce ? 0 : .35, ease: "power3.out", overwrite: true }); moveFlare(a); };
+    as.forEach((a) => a.classList.toggle("on", +a.dataset.k === k)); document.querySelectorAll(".callout").forEach((c) => c.classList.toggle("on", +c.dataset.k === k));
+    const a = as[Math.min(k, 5)]; if (a.scrollIntoView && nav.querySelector(".wrap").scrollWidth > nav.querySelector(".wrap").clientWidth) a.scrollIntoView({ block: "nearest", inline: "center" }); moveFlare(a); };
   // the active section is the last one whose top has passed just below the sticky bars; computed on scroll, so it cannot lag
   let cur = -1, lock = 0;
   const track = () => { const secs = document.querySelectorAll(".st"); if (!secs.length) return; const nav = document.querySelector(".star"), line = nav.getBoundingClientRect().bottom + Math.min(160, innerHeight * 0.25); let k = 0;
@@ -135,7 +143,7 @@
       const target = h[2] != null ? document.getElementById("s" + h[2]) : null; if (target) target.scrollIntoView(); else if (!same) scrollTo(0, 0);
       if (h[2] != null) { cur = +h[2]; lock = Date.now() + 900; setActive(cur); setTimeout(track, 950); } else { cur = -1; requestAnimationFrame(track); }
     } else { app.innerHTML = home(); app.dataset.key = ""; document.title = "12 Programs × STAR · Jesse Myer"; glossify(app);
-      if (h[0] === "about") setTimeout(() => document.getElementById("about").scrollIntoView(), 60); else scrollTo(0, 0);
+      if (h[0] === "about" || h[0] === "index") setTimeout(() => document.getElementById(h[0]).scrollIntoView(), 60); else scrollTo(0, 0);
       const hero = document.querySelector(".hero h1"); if (hero) { const r = hero.getBoundingClientRect(); gsap.set(flare, { x: innerWidth * .82, y: r.top + r.height + 30 }); gsap.fromTo(flare, { opacity: 0, scale: .4 }, { opacity: .85, scale: 1, duration: reduce ? 0 : 1.4, ease: "power2.out" }); } }
     document.querySelectorAll('a[href^="http"]').forEach((a) => { a.target = "_blank"; a.rel = "noopener"; });
     document.querySelectorAll("video[data-src]").forEach((v) => vio.observe(v));
@@ -147,7 +155,7 @@
   addEventListener("scroll", track, { passive: true });
   addEventListener("scroll", () => { if (!document.querySelector(".star")) gsap.to(flare, { opacity: Math.max(0, .85 - scrollY / 500), duration: .2, overwrite: "auto" }); }, { passive: true });
   addEventListener("keydown", (e) => { if (e.target.closest("input,textarea") || e.metaKey || e.ctrlKey || e.altKey) return; const k = app.dataset.key; if (!k) return; const i = order.indexOf(k);
-    if (e.key === "ArrowRight") location.hash = "#/p/" + order[(i + 1) % 12]; else if (e.key === "ArrowLeft") location.hash = "#/p/" + order[(i + 11) % 12]; else if (e.key === "i") location.hash = "#/"; });
+    if (e.key === "ArrowRight") location.hash = "#/p/" + order[(i + 1) % 12]; else if (e.key === "ArrowLeft") location.hash = "#/p/" + order[(i + 11) % 12]; else if (e.key === "i") location.hash = "#/index"; });
   const hh = () => root.style.setProperty("--hh", document.querySelector(".top").offsetHeight + "px"); hh(); addEventListener("resize", hh);
   render();
 })();
